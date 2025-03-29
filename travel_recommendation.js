@@ -1,12 +1,15 @@
 const searchForm = document.querySelector('.search-form');
 const clearBtn = document.querySelector('.clearBtn');
 const recContainer = document.querySelector('.container-recommendations');
-const resultsToDisplay = 2;
+const resultsToDisplay = 4;
 
 const getQuery = function () {
   const searchInput = searchForm.querySelector('#search');
   const query = searchInput.value.trim().toLowerCase();
-
+  if (!query) {
+    alert('Please enter a destination or keyword');
+    return;
+  }
   searchInput.value = '';
   return query;
 };
@@ -18,38 +21,44 @@ const findRecommendation = async function () {
     const response = await fetch('travel_recommendation_api.json');
     const data = await response.json();
     const recommendations = [];
-    data.countries.forEach(country => {
-      country.cities.forEach(city => {
-        if (
-          city.name.toLowerCase().includes(query) ||
-          city.description.toLowerCase().includes(query)
-        ) {
-          recommendations.push(city);
+    Object.entries(data).forEach(([key, value]) => {
+      if (key.includes(query)) {
+        if (key === 'countries') {
+          value.forEach(el => {
+            el.cities.forEach(city => recommendations.push(city));
+            return;
+          });
         }
-      });
-    });
-
-    data.beaches.forEach(beach => {
-      if (
-        beach.name.toLowerCase().includes(query) ||
-        beach.description.toLowerCase().includes(query)
-      ) {
-        recommendations.push(beach);
+        value.forEach(el => recommendations.push(el));
+      } else {
+        if (key === 'countries') {
+          value.forEach(el => {
+            el.cities.forEach(city => {
+              if (
+                city.name.toLowerCase().includes(query) ||
+                city.description.toLowerCase().includes(query)
+              ) {
+                recommendations.push(city);
+              }
+            });
+          });
+        } else {
+          value.forEach(el => {
+            if (
+              el.name.toLowerCase().includes(query) ||
+              el.description.toLowerCase().includes(query)
+            ) {
+              recommendations.push(el);
+            }
+          });
+        }
       }
     });
 
-    data.temples.forEach(temple => {
-      if (
-        temple.name.toLowerCase().includes(query) ||
-        temple.description.toLowerCase().includes(query)
-      ) {
-        recommendations.push(temple);
-      }
-    });
-    recommendations.splice(2);
+    recommendations.splice(resultsToDisplay);
     return recommendations;
   } catch (error) {
-    alert(error);
+    console.error(error);
   }
 };
 
@@ -67,7 +76,9 @@ const displayRecommendation = function (recommendations) {
   for (let i = 0; i < recommendations.length; i++) {
     const html = `
 			<div class="recommendation">
-				<img class="rec-img" src="./images/${recommendations[i].imageUrl}" />
+				<div class="rec-img-container">
+					<img class="rec-img" src="./images/${recommendations[i].imageUrl}" />
+				</div>
 				<div class="rec-info">
 					<h1>${recommendations[i].name}</h1>
 				<p>
@@ -84,9 +95,10 @@ const displayRecommendation = function (recommendations) {
 const recommendPlace = async function () {
   try {
     const recommendations = await findRecommendation();
+    if (!recommendations) return;
     displayRecommendation(recommendations);
   } catch (error) {
-    alert(error);
+    console.error(error);
   }
 };
 
